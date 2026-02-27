@@ -4,12 +4,8 @@ import google.generativeai as genai
 # --- Web App UI Setup ---
 st.set_page_config(page_title="AE Expression Generator", page_icon="🎬")
 st.title("🎬 After Effects Expression Generator")
-st.markdown("Created by Sajjad SABOUR")
+st.markdown("**Created by Sajjad SABOUR**") # Make sure to put your name back here!
 st.write("Describe the motion or animation you want, and the AI will write the JavaScript expression for you.")
-
-# --- API Key Input (Secure for web) ---
-api_key = st.text_input("Enter your Google Gemini API Key:", type="password")
-st.markdown("*Get a free API key from [Google AI Studio](https://aistudio.google.com/)*")
 
 st.divider()
 
@@ -17,13 +13,12 @@ st.divider()
 user_text = st.text_area("Describe the motion (e.g., 'Wiggle on the Y axis every 2 seconds'):", height=100)
 
 if st.button("Generate Expression", type="primary"):
-    if not api_key:
-        st.error("Please enter your API key first!")
-    elif not user_text:
+    if not user_text:
         st.warning("Please type an animation description.")
     else:
         try:
-            # Configure AI
+            # Securely pull the API key from Streamlit's hidden Secrets vault
+            api_key = st.secrets["API_KEY"]
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
             
