@@ -24,7 +24,7 @@ if st.button("Generate Expression", type="primary"):
         try:
             # Configure AI
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             # Generate the expression
             prompt = f"Write an Adobe After Effects expression for this animation: '{user_text}'. ONLY output the raw JavaScript code. Do not include markdown formatting like ```javascript. Do not explain the code."
