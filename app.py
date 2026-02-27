@@ -4,6 +4,7 @@ import google.generativeai as genai
 # --- Web App UI Setup ---
 st.set_page_config(page_title="AE Expression Generator", page_icon="🎬")
 st.title("🎬 After Effects Expression Generator")
+st.markdown("Created by Sajjad SABOUR")
 st.write("Describe the motion or animation you want, and the AI will write the JavaScript expression for you.")
 
 # --- API Key Input (Secure for web) ---
