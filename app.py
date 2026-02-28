@@ -5,37 +5,39 @@ import google.generativeai as genai
 st.set_page_config(page_title="AE Expression Generator", page_icon="🎬")
 st.title("🎬 After Effects Expression Generator")
 st.markdown("**Created by Sajjad SABOUR**") # Don't forget your name!
-st.write("Choose a preset or describe the animation you want, and the AI will write the JavaScript expression for you.")
+st.write("Choose a preset as a starting point, or write your own custom animation description.")
 
 st.divider()
 
 # --- 10 Quick Presets ---
 presets = [
     "Custom (Type your own below)",
-    "Inertial Bounce (Realistic overshoot/bounce when keyframes stop)",
-    "Continuous Wiggle (Random smooth movement on all axes)",
-    "Seamless Loop (Cycle keyframes forever without stopping)",
-    "Hovering / Floating Object (Smooth, slow up-and-down motion)",
-    "Neon Light Flicker (Random, sharp jumps in opacity)",
-    "Auto-Rotate (Constant spinning over time without keyframes)",
-    "Squash and Stretch (Scale changes based on the layer's speed)",
-    "Pendulum Swing (Smooth back-and-forth rotation from an anchor point)",
-    "Layer Delay (Follow the movement of the layer above it with a slight time delay)",
-    "Blinking Cursor (Turn opacity on and off every second like a computer prompt)"
+    "Inertial Bounce: Realistic overshoot/bounce when keyframes stop",
+    "Continuous Wiggle: Random smooth movement on all axes",
+    "Seamless Loop: Cycle keyframes forever without stopping",
+    "Hovering / Floating Object: Smooth, slow up-and-down motion",
+    "Neon Light Flicker: Random, sharp jumps in opacity",
+    "Auto-Rotate: Constant spinning over time without keyframes",
+    "Squash and Stretch: Scale changes based on the layer's speed",
+    "Pendulum Swing: Smooth back-and-forth rotation from an anchor point",
+    "Layer Delay: Follow the movement of the layer above it with a slight time delay",
+    "Blinking Cursor: Turn opacity on and off every second like a computer prompt"
 ]
 
 selected_preset = st.selectbox("⚡ Quick Presets:", presets)
 
 # --- User Input Logic ---
-# If they choose Custom, show the text box. Otherwise, use the preset description.
+# Figure out what text should be in the box by default
 if selected_preset == "Custom (Type your own below)":
-    user_text = st.text_area("Describe the custom motion:", height=100)
+    default_prompt = ""
 else:
-    user_text = selected_preset
-    st.info(f"**Selected Preset:** {user_text}")
+    default_prompt = selected_preset
+
+# The text box is ALWAYS visible and editable now
+user_text = st.text_area("Edit the prompt or write your own:", value=default_prompt, height=100)
 
 if st.button("Generate Expression", type="primary"):
-    if not user_text:
+    if not user_text.strip():
         st.warning("Please type an animation description.")
     else:
         try:
