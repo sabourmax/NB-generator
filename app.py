@@ -40,12 +40,22 @@ with col1:
     
     input_type = st.radio(
         "1. What are you uploading?", 
-        ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
+        ["🧊 Simple 3D Render / Blockout (Strict Geometry, Upgraded Lighting)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
     )
     
     uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
     
-    target_style = st.selectbox("3. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    # NEW: Clearer options between Photo and Render
+    target_style = st.selectbox(
+        "3. Final Output Look:", 
+        [
+            "Photorealistic Photography (Like a real camera)", 
+            "High-End 3D Render (Octane / V-Ray / Unreal)", 
+            "Cinematic Movie Still", 
+            "Anime / Cel Shaded", 
+            "Cyberpunk / Neon Aesthetic"
+        ]
+    )
     
     background_details = st.text_input("4. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
     
@@ -109,16 +119,15 @@ if st.button("Generate Master Prompt ✨", type="primary"):
 
                 bg_instruction = f" Replace the background/environment with: '{background_details}'." if background_details else " Keep the background exact."
 
-                # --- HYPER-STRICT 3D RENDER INSTRUCTIONS ---
+                # --- UPGRADED 3D RENDER INSTRUCTIONS ---
                 if "3D Render" in input_type:
                     instruction = (
-                        f"Act as a strict structural analyzer and lighting engine for Nano Banana. Look at the attached 3D blockout. "
-                        f"CRITICAL RULE: Describe ONLY the literal geometric shapes and surfaces you see. If a surface is empty, state that it is empty. "
-                        f"ABSOLUTELY DO NOT name, suggest, or add props, clutter, computers, plants, or characters unless they are explicitly modeled in the reference image. "
-                        f"Your job is to assign high-end materials and lighting to the EXACT geometry shown. "
+                        f"Act as a strict structural analyzer and expert lighting artist for Nano Banana. Look at the attached 3D blockout. "
+                        f"1. STRUCTURE: Describe ONLY the exact 3D models, geometry, and shapes visible in the reference image. DO NOT add, hallucinate, or suggest any new objects, props, or clutter. "
+                        f"2. LIGHTING & MATERIALS: Completely ignore the original basic/flat lighting of the blockout. Re-imagine and elevate the scene by applying breathtaking, professional lighting and ultra-realistic materials to the existing shapes. "
                         f"{('User overrides: ' + extra_details) if extra_details else ''}. {bg_instruction} "
-                        f"Target style: {target_style}. Camera Lens: {selected_lens}. Depth of Field: {selected_dof}. Lighting: {selected_lighting}. "
-                        f"Write a sparse, comma-separated prompt focused entirely on materials, lighting, textures, and the existing blank geometry. DO NOT write full sentences."
+                        f"Target look: {target_style}. Camera Lens: {selected_lens}. Depth of Field: {selected_dof}. Lighting Setup: {selected_lighting}. "
+                        f"Write a sparse, comma-separated prompt focused entirely on the exact geometry, upgraded materials, and the new elevated lighting. DO NOT write full sentences."
                     )
                 else:
                     instruction = (
@@ -144,7 +153,6 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                 st.error(f"Error generating prompt: {e}")
 
 # --- EDITABLE PROMPT SECTION ---
-# This section only appears if a prompt has been generated
 if st.session_state.generated_prompt:
     st.divider()
     st.subheader("✏️ Review and Edit")
