@@ -1,21 +1,14 @@
 import streamlit as st
 from google import genai
 from PIL import Image
-import io
 
 # --- Web App UI Setup ---
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
-st.title("🍌 Nano Banana Studio")
+st.title("🍌 Nano Banana Studio: Prompt Engineer")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Step 1: Upload a base image and dial in your pro camera settings. Step 2: Generate the final render.")
+st.write("Upload a base image, dial in your pro camera settings, and get the ultimate prompt ready to copy and paste.")
 
 st.divider()
-
-# --- Initialize Session State ---
-if "generated_prompt" not in st.session_state:
-    st.session_state.generated_prompt = ""
-if "final_aspect_ratio" not in st.session_state:
-    st.session_state.final_aspect_ratio = "1:1"
 
 # --- Setup the API Client ---
 try:
@@ -25,20 +18,18 @@ except Exception:
     st.error("API Key not found! Please add it to your Streamlit Settings > Secrets.")
     st.stop()
 
-# Helper function to match image dimensions to supported API ratios
-def get_closest_aspect_ratio(width, height):
+# Helper function to match image dimensions to standard aspect ratio tags
+def get_closest_aspect_ratio_tag(width, height):
     ratio = width / height
-    if ratio >= 1.5: return "16:9"
-    elif ratio >= 1.1: return "4:3"
-    elif ratio <= 0.6: return "9:16"
-    elif ratio <= 0.9: return "3:4"
-    else: return "1:1"
+    if ratio >= 1.5: return "--ar 16:9"
+    elif ratio >= 1.1: return "--ar 4:3"
+    elif ratio <= 0.6: return "--ar 9:16"
+    elif ratio <= 0.9: return "--ar 3:4"
+    else: return "--ar 1:1"
 
 # ==========================================
-# STEP 1: PRO CONTROLS & PROMPT GENERATION
+# PRO CONTROLS & PROMPT GENERATION
 # ==========================================
-st.header("1️⃣ Analyze Image & Write Prompt")
-
 col1, col2 = st.columns([1, 1.2])
 
 with col1:
@@ -91,21 +82,20 @@ with col2:
         ]
     )
 
-if st.button("Analyze Image & Generate Prompt", type="primary"):
+if st.button("Generate Master Prompt ✨", type="primary"):
     if not uploaded_file:
         st.warning("Please upload an image first!")
     else:
-        with st.spinner("Gemini is analyzing the layout and applying camera settings..."):
+        with st.spinner("Analyzing layout and engineering the prompt..."):
             try:
                 img = Image.open(uploaded_file)
                 
-                # Logic to handle aspect ratio matching
+                # Logic to handle aspect ratio matching and formatting the tag
                 if selected_ar == "Match Uploaded Image":
-                    calc_ar = get_closest_aspect_ratio(img.width, img.height)
-                    st.session_state.final_aspect_ratio = calc_ar
-                    st.info(f"Detected image proportions. Locked aspect ratio to **{calc_ar}**.")
+                    final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
+                    st.info(f"Detected image proportions. Appending aspect ratio: **{final_ar_tag}**.")
                 else:
-                    st.session_state.final_aspect_ratio = selected_ar
+                    final_ar_tag = f"--ar {selected_ar}"
 
                 # Building the highly strict instruction prompt
                 instruction = (
@@ -117,7 +107,8 @@ if st.button("Analyze Image & Generate Prompt", type="primary"):
                     f"- Lens/Focal Length: {selected_lens}\n"
                     f"- Depth of Field: {selected_dof}\n"
                     f"- Lighting: {selected_lighting}\n"
-                    f"Write a highly detailed, comma-separated prompt to recreate this exact layout as a {target_style} masterpiece. Include high-quality rendering textures. Only output the raw prompt text."
+                    f"Write a highly detailed, comma-separated prompt to recreate this exact layout as a {target_style} masterpiece. Include high-quality rendering textures. "
+                    f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                 )
                 
                 response = client.models.generate_content(
@@ -125,54 +116,13 @@ if st.button("Analyze Image & Generate Prompt", type="primary"):
                     contents=[instruction, img]
                 )
                 
-                st.session_state.generated_prompt = response.text.strip()
-                st.success("Pro Prompt successfully generated!")
+                # Combine the AI's prompt with the aspect ratio tag at the very end
+                final_prompt = f"{response.text.strip()} {final_ar_tag}"
+                
+                st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
+                
+                # st.code automatically provides a nice formatted box with a copy button
+                st.code(final_prompt, language="text")
+                
             except Exception as e:
                 st.error(f"Error generating prompt: {e}")
-
-st.divider()
-
-# ==========================================
-# STEP 2: EDIT PROMPT & GENERATE IMAGE
-# ==========================================
-st.header("2️⃣ Edit Prompt & Generate Image")
-
-edited_prompt = st.text_area("Review and Edit Your Prompt:", value=st.session_state.generated_prompt, height=150)
-
-if edited_prompt != st.session_state.generated_prompt:
-    st.session_state.generated_prompt = edited_prompt
-
-if st.button("Generate Image 🍌", type="primary"):
-    if not st.session_state.generated_prompt.strip():
-        st.warning("Please generate or write a prompt first!")
-    else:
-        with st.spinner(f"Nano Banana is rendering your image in {st.session_state.final_aspect_ratio}..."):
-            try:
-                # Fixed to the correct supported model version
-                result = client.models.generate_images(
-                    model='imagen-3.0-generate-001',
-                    prompt=st.session_state.generated_prompt,
-                    config=dict(
-                        number_of_images=1,
-                        aspect_ratio=st.session_state.final_aspect_ratio
-                    )
-                )
-                
-                final_image = result.generated_images[0].image
-                
-                st.image(final_image, caption=f"Generated by Nano Banana Studio | AR: {st.session_state.final_aspect_ratio}", use_container_width=True)
-                
-                buf = io.BytesIO()
-                final_image.save(buf, format="PNG")
-                byte_im = buf.getvalue()
-                
-                st.download_button(
-                    label="Download Full Resolution Image 📥",
-                    data=byte_im,
-                    file_name="nano_banana_pro_render.png",
-                    mime="image/png",
-                    type="primary"
-                )
-                
-            except Exception as e:
-                st.error(f"Image generation failed. Error: {e}")
