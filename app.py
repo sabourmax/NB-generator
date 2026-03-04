@@ -35,36 +35,30 @@ col1, col2 = st.columns([1, 1.2])
 with col1:
     st.markdown("### 📝 Core Settings")
     
-    prompt_engine = st.radio(
-        "1. Select Prompt Engine:", 
-        ["🧠 Pro (Gemini Pro - Slower, but highly detailed & accurate)", "⚡ Fast (Gemini Flash - Quick, creative ideas)"]
-    )
-    
     input_type = st.radio(
-        "2. What are you uploading?", 
+        "1. What are you uploading?", 
         ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
     )
     
-    uploaded_file = st.file_uploader("3. Upload your Image:", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
     
-    # NEW: Product Category Field
+    # NEW: Workspace-focused Product Category
     product_category = st.selectbox(
-        "4. Product / Subject Category:",
+        "3. Product / Subject Category:",
         [
+            "Workspace & PC Setups (Desks, Chairs, Tech)",
             "Generic Scene / Character",
-            "Furniture / Home Office Desks",
-            "PC Gaming Hardware / Tech Accessories",
             "Cosmetics / Beauty Products",
             "Hard Surface Industrial / Automotive",
             "Architecture / Interior Design"
         ]
     )
     
-    target_style = st.selectbox("5. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    target_style = st.selectbox("4. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
     
-    background_details = st.text_input("6. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
+    background_details = st.text_input("5. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
     
-    extra_details = st.text_input("7. Extra Details (Optional):", placeholder="e.g., Make the desk wood, add RGB lighting...")
+    extra_details = st.text_input("6. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood, add RGB lighting behind the monitors...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
@@ -112,11 +106,9 @@ if st.button("Generate Master Prompt ✨", type="primary"):
     if not uploaded_file:
         st.warning("Please upload an image first!")
     else:
-        with st.spinner("Analyzing layout and engineering the prompt..."):
+        with st.spinner("Analyzing layout and engineering the prompt with Gemini Pro..."):
             try:
                 img = Image.open(uploaded_file)
-                
-                selected_model = 'gemini-2.5-pro' if "Pro" in prompt_engine else 'gemini-2.5-flash'
                 
                 if selected_ar == "Match Uploaded Image":
                     final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
@@ -126,13 +118,18 @@ if st.button("Generate Master Prompt ✨", type="primary"):
 
                 bg_instruction = f" Replace the current background/environment with this completely new background: '{background_details}'." if background_details else " Keep the background/environment consistent with the original image."
 
-                # NEW: Inject specific rendering instructions based on the product category
+                # NEW: Highly targeted instructions for your company's desk/tech setups
                 category_instruction = ""
-                if product_category != "Generic Scene / Character":
+                if product_category == "Workspace & PC Setups (Desks, Chairs, Tech)":
+                    category_instruction = (
+                        f" This image features a professional workspace or gaming setup. Optimize the prompt specifically for high-end commercial visualization of desks, ergonomic chairs, and PC hardware. "
+                        f"Explicitly mention high-quality physical materials like rich wood grains, premium fabrics, matte plastics, and glowing monitor screens. "
+                        f"Ensure the staging looks like a top-tier lifestyle product shot with excellent cable management and atmospheric lighting. "
+                    )
+                elif product_category != "Generic Scene / Character":
                     category_instruction = (
                         f" This image features a '{product_category}'. Optimize the prompt specifically for high-end commercial visualization of this category. "
-                        f"Explicitly mention appropriate physical materials (e.g., wood grain and fabrics for furniture, glossy plastics and metals for tech, subsurface scattering and caustics for beauty, brushed steel and hard reflections for industrial). "
-                        f"Ensure the staging and lighting flatter this specific type of product. "
+                        f"Explicitly mention appropriate physical materials and lighting that flatter this specific type of product. "
                     )
 
                 # --- DYNAMIC INSTRUCTIONS BASED ON INPUT TYPE ---
@@ -163,14 +160,15 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                         f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                     )
                 
+                # Hardcoded to exclusively use the Pro model
                 response = client.models.generate_content(
-                    model=selected_model,
+                    model='gemini-2.5-pro',
                     contents=[instruction, img]
                 )
                 
                 final_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
-                st.success(f"Prompt successfully generated using {prompt_engine.split(' ')[1]}! Hover over the top right corner of the box below to copy it.")
+                st.success(f"Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
                 st.code(final_prompt, language="text")
                 
             except Exception as e:
