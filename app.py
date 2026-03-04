@@ -6,7 +6,7 @@ from PIL import Image
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
 st.title("🍌 Nano Banana Studio: Prompt Engineer")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Upload a base image, dial in your pro camera settings, and get the ultimate prompt ready to copy and paste.")
+st.write("Upload a base image, choose your input type, dial in your pro camera settings, and get the ultimate prompt.")
 
 st.divider()
 
@@ -33,20 +33,23 @@ def get_closest_aspect_ratio_tag(width, height):
 col1, col2 = st.columns([1, 1.2])
 
 with col1:
-    uploaded_file = st.file_uploader("Upload your Sketch or Base Image:", type=["jpg", "jpeg", "png"])
-    target_style = st.selectbox("Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
-    extra_details = st.text_input("Extra Details (Optional):", placeholder="e.g., Add a dual-monitor PC setup, make the RGB lights blue...")
+    input_type = st.radio(
+        "1. What are you uploading?", 
+        ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
+    )
+    
+    uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
+    target_style = st.selectbox("3. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    extra_details = st.text_input("4. Extra Details (Optional):", placeholder="e.g., Make the desk wood, add RGB lighting to the monitors...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
     
-    # Aspect Ratio Selection
     selected_ar = st.selectbox(
         "Aspect Ratio:", 
         ["Match Uploaded Image", "16:9", "9:16", "4:3", "3:4", "1:1"]
     )
     
-    # Camera Lenses
     selected_lens = st.selectbox(
         "Camera Lens:", 
         [
@@ -59,7 +62,6 @@ with col2:
         ]
     )
     
-    # Depth of Field (DOF)
     selected_dof = st.selectbox(
         "Depth of Field (Bokeh):", 
         [
@@ -70,7 +72,6 @@ with col2:
         ]
     )
     
-    # Lighting 
     selected_lighting = st.selectbox(
         "Lighting Setup:",
         [
@@ -90,38 +91,48 @@ if st.button("Generate Master Prompt ✨", type="primary"):
             try:
                 img = Image.open(uploaded_file)
                 
-                # Logic to handle aspect ratio matching and formatting the tag
                 if selected_ar == "Match Uploaded Image":
                     final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
                     st.info(f"Detected image proportions. Appending aspect ratio: **{final_ar_tag}**.")
                 else:
                     final_ar_tag = f"--ar {selected_ar}"
 
-                # Building the highly strict instruction prompt
-                instruction = (
-                    f"Act as an expert AI prompt engineer for Nano Banana. Look at the exact structure, composition, and layout of the attached image. "
-                    f"{('Additional details: ' + extra_details) if extra_details else ''}. "
-                    f"IMPORTANT: You MUST strictly enforce keeping the exact same structure, composition, and camera angle as the uploaded image. Do not change the perspective. "
-                    f"Apply these specific photographic settings to your prompt keywords:\n"
-                    f"- Target Style: {target_style}\n"
-                    f"- Lens/Focal Length: {selected_lens}\n"
-                    f"- Depth of Field: {selected_dof}\n"
-                    f"- Lighting: {selected_lighting}\n"
-                    f"Write a highly detailed, comma-separated prompt to recreate this exact layout as a {target_style} masterpiece. Include high-quality rendering textures. "
-                    f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
-                )
+                # --- DYNAMIC INSTRUCTIONS BASED ON INPUT TYPE ---
+                if "3D Render" in input_type:
+                    # STRICT lock for 3D blockouts
+                    instruction = (
+                        f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached simple 3D render. "
+                        f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
+                        f"CRITICAL INSTRUCTION: The generated prompt MUST explicitly command the image AI to keep the EXACT same 3D structure, geometry, shapes, and details as the reference image. Do not add, remove, or hallucinate new structural elements. "
+                        f"The prompt should focus ONLY on upgrading the existing scene to a {target_style} masterpiece by applying ultra-realistic materials, high-end texturing, and these photographic settings:\n"
+                        f"- Lens: {selected_lens}\n"
+                        f"- Depth of Field: {selected_dof}\n"
+                        f"- Lighting: {selected_lighting}\n"
+                        f"Write a highly detailed, comma-separated prompt prioritizing keywords like 'exact geometry match', 'material upgrade', and 'hyper-realistic textures'. "
+                        f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
+                    )
+                else:
+                    # CREATIVE interpretation for sketches
+                    instruction = (
+                        f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached sketch. "
+                        f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
+                        f"Use the sketch as a compositional guide, but creatively flesh out the details to turn it into a {target_style} masterpiece. "
+                        f"Apply these photographic settings:\n"
+                        f"- Lens: {selected_lens}\n"
+                        f"- Depth of Field: {selected_dof}\n"
+                        f"- Lighting: {selected_lighting}\n"
+                        f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. "
+                        f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
+                    )
                 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=[instruction, img]
                 )
                 
-                # Combine the AI's prompt with the aspect ratio tag at the very end
                 final_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
                 st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
-                
-                # st.code automatically provides a nice formatted box with a copy button
                 st.code(final_prompt, language="text")
                 
             except Exception as e:
