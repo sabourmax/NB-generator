@@ -35,16 +35,24 @@ col1, col2 = st.columns([1, 1.2])
 with col1:
     st.markdown("### 📝 Core Settings")
     
+    # Brought the toggle back to prevent 429 Quota Errors
+    prompt_engine = st.radio(
+        "1. Select Prompt Engine:", 
+        [
+            "🧠 Pro (Highest Quality - Strict Free Quota)", 
+            "⚡ Flash (Faster - High Free Quota Fallback)"
+        ]
+    )
+    
     input_type = st.radio(
-        "1. What are you uploading?", 
+        "2. What are you uploading?", 
         ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
     )
     
-    uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("3. Upload your Image:", type=["jpg", "jpeg", "png"])
     
-    # NEW: Workspace-focused Product Category
     product_category = st.selectbox(
-        "3. Product / Subject Category:",
+        "4. Product / Subject Category:",
         [
             "Workspace & PC Setups (Desks, Chairs, Tech)",
             "Generic Scene / Character",
@@ -54,11 +62,11 @@ with col1:
         ]
     )
     
-    target_style = st.selectbox("4. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    target_style = st.selectbox("5. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
     
-    background_details = st.text_input("5. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
+    background_details = st.text_input("6. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
     
-    extra_details = st.text_input("6. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood, add RGB lighting behind the monitors...")
+    extra_details = st.text_input("7. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood, add RGB lighting behind the monitors...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
@@ -106,9 +114,12 @@ if st.button("Generate Master Prompt ✨", type="primary"):
     if not uploaded_file:
         st.warning("Please upload an image first!")
     else:
-        with st.spinner("Analyzing layout and engineering the prompt with Gemini Pro..."):
+        with st.spinner("Analyzing layout and engineering the prompt..."):
             try:
                 img = Image.open(uploaded_file)
+                
+                # Logic to switch models based on user selection
+                selected_model = 'gemini-2.5-pro' if "Pro" in prompt_engine else 'gemini-2.5-flash'
                 
                 if selected_ar == "Match Uploaded Image":
                     final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
@@ -118,7 +129,6 @@ if st.button("Generate Master Prompt ✨", type="primary"):
 
                 bg_instruction = f" Replace the current background/environment with this completely new background: '{background_details}'." if background_details else " Keep the background/environment consistent with the original image."
 
-                # NEW: Highly targeted instructions for your company's desk/tech setups
                 category_instruction = ""
                 if product_category == "Workspace & PC Setups (Desks, Chairs, Tech)":
                     category_instruction = (
@@ -132,7 +142,6 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                         f"Explicitly mention appropriate physical materials and lighting that flatter this specific type of product. "
                     )
 
-                # --- DYNAMIC INSTRUCTIONS BASED ON INPUT TYPE ---
                 if "3D Render" in input_type:
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached simple 3D render. "
@@ -160,9 +169,8 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                         f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                     )
                 
-                # Hardcoded to exclusively use the Pro model
                 response = client.models.generate_content(
-                    model='gemini-2.5-pro',
+                    model=selected_model,
                     contents=[instruction, img]
                 )
                 
