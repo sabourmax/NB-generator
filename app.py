@@ -6,9 +6,13 @@ from PIL import Image
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
 st.title("🍌 Nano Banana Studio: Prompt Engineer")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Upload a base image, dial in your pro camera settings, and get the ultimate prompt.")
+st.write("Upload a base image, dial in your pro camera settings, and get an editable master prompt.")
 
 st.divider()
+
+# --- Initialize Session State for Editable Prompt ---
+if "generated_prompt" not in st.session_state:
+    st.session_state.generated_prompt = ""
 
 # --- Setup the API Client ---
 try:
@@ -103,26 +107,24 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                 else:
                     final_ar_tag = f"--ar {selected_ar}"
 
-                bg_instruction = f" Replace the current background/environment with this completely new background: '{background_details}'." if background_details else " Keep the background/environment consistent with the original image."
+                bg_instruction = f" Replace the background/environment with: '{background_details}'." if background_details else " Keep the background exact."
 
+                # --- HYPER-STRICT 3D RENDER INSTRUCTIONS ---
                 if "3D Render" in input_type:
                     instruction = (
-                        f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached simple 3D render. "
-                        f"CRITICAL RULE: You must act as a literal texture and lighting engine. Describe ONLY the exact geometry and objects visible in this reference image. Absolutely DO NOT add, suggest, or hallucinate any new objects, furniture, or props. "
-                        f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
-                        f"{bg_instruction} "
-                        f"Upgrade the existing geometry to a {target_style} masterpiece focusing purely on ultra-realistic materials, high-resolution textures, and these photographic settings:\n"
-                        f"- Lens: {selected_lens}\n"
-                        f"- Depth of Field: {selected_dof}\n"
-                        f"- Lighting: {selected_lighting}\n"
-                        f"Write a highly detailed, comma-separated prompt describing the scene. DO NOT output conversational text, just the raw prompt."
+                        f"Act as a strict structural analyzer and lighting engine for Nano Banana. Look at the attached 3D blockout. "
+                        f"CRITICAL RULE: Describe ONLY the literal geometric shapes and surfaces you see. If a surface is empty, state that it is empty. "
+                        f"ABSOLUTELY DO NOT name, suggest, or add props, clutter, computers, plants, or characters unless they are explicitly modeled in the reference image. "
+                        f"Your job is to assign high-end materials and lighting to the EXACT geometry shown. "
+                        f"{('User overrides: ' + extra_details) if extra_details else ''}. {bg_instruction} "
+                        f"Target style: {target_style}. Camera Lens: {selected_lens}. Depth of Field: {selected_dof}. Lighting: {selected_lighting}. "
+                        f"Write a sparse, comma-separated prompt focused entirely on materials, lighting, textures, and the existing blank geometry. DO NOT write full sentences."
                     )
                 else:
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached sketch. "
                         f"Use the sketch as a compositional guide. "
-                        f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
-                        f"{bg_instruction} "
+                        f"{('Additional details from user: ' + extra_details) if extra_details else ''}. {bg_instruction} "
                         f"Creatively turn this into a {target_style} masterpiece with these photographic settings:\n"
                         f"- Lens: {selected_lens}\n"
                         f"- Depth of Field: {selected_dof}\n"
@@ -135,10 +137,21 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                     contents=[instruction, img]
                 )
                 
-                final_prompt = f"{response.text.strip()} {final_ar_tag}"
-                
-                st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
-                st.code(final_prompt, language="text")
+                # Save the generated prompt to session state so it can be edited
+                st.session_state.generated_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
             except Exception as e:
                 st.error(f"Error generating prompt: {e}")
+
+# --- EDITABLE PROMPT SECTION ---
+# This section only appears if a prompt has been generated
+if st.session_state.generated_prompt:
+    st.divider()
+    st.subheader("✏️ Review and Edit")
+    
+    # The text area allows the user to manually edit the prompt
+    edited_prompt = st.text_area("Tweak your prompt here:", value=st.session_state.generated_prompt, height=150)
+    
+    st.success("Ready! Click the copy icon in the top right corner of the box below:")
+    # The code box dynamically updates to show whatever the user typed in the text area above
+    st.code(edited_prompt, language="text")
