@@ -1,86 +1,97 @@
 import streamlit as st
 import google.generativeai as genai
+from PIL import Image
 
 # --- Web App UI Setup ---
-st.set_page_config(page_title="AI Prompt Generator", page_icon="🎨", layout="wide")
-st.title("🎨 AI Image Prompt Engineer")
+st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
+st.title("🍌 Nano Banana Studio")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Generate highly detailed, professional prompts for Midjourney, Stable Diffusion, and other AI image generators.")
+st.write("Step 1: Upload a sketch to generate an optimized prompt. Step 2: Edit the prompt and generate the final image.")
 
 st.divider()
 
-# --- Organize into 3 Tabs ---
-tab1, tab2, tab3 = st.tabs(["🖌️ Sketch/3D to High-End", "📐 Change Angle", "🎛️ Advanced Studio Builder"])
+# --- Initialize Session State ---
+# This keeps the prompt in memory so it doesn't disappear when you click buttons
+if "generated_prompt" not in st.session_state:
+    st.session_state.generated_prompt = ""
 
-# Helper function to generate and display the prompt
-def generate_and_display(system_instruction):
-    try:
-        # This securely uses YOUR Gemini API key from the Streamlit Secrets vault
-        api_key = st.secrets["API_KEY"]
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
-        with st.spinner("Engineering the perfect prompt..."):
-            response = model.generate_content(system_instruction)
-            
-        st.success("Prompt Generated! Hover over the top right of the box below to copy it.")
-        st.code(response.text.strip(), language="text")
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+# --- Setup API Key ---
+try:
+    api_key = st.secrets["API_KEY"]
+    genai.configure(api_key=api_key)
+except Exception:
+    st.error("API Key not found! Please add it to your Streamlit Settings > Secrets.")
+    st.stop()
 
-# --- TAB 1: Sketch / Basic 3D to High-End Render ---
-with tab1:
-    st.subheader("Convert a Sketch or Basic 3D to a Realistic Render")
-    st.write("Use the generated prompt alongside an Image-to-Image (Img2Img) or ControlNet workflow.")
-    
-    base_subject = st.text_input("What is the sketch/3D model of?", placeholder="e.g., A futuristic motorcycle, a modern gaming room...")
-    target_finish = st.selectbox("Desired Finish:", ["Photorealistic / Cinematic", "Octane Render / 3D Stylized", "Anime / Cel Shaded", "Matte Painting / Concept Art"])
-    
-    if st.button("Generate Prompt", key="btn_tab1", type="primary"):
-        if not base_subject:
-            st.warning("Please describe the subject.")
-        else:
-            instruction = f"Act as an expert AI image prompt engineer. I am using an image-to-image AI. I have a basic sketch/3D model of '{base_subject}'. Write a highly detailed, comma-separated prompt to turn it into a {target_finish} masterpiece. Include lighting, texture, and quality keywords (e.g., 8k, highly detailed, global illumination). Only output the prompt itself, nothing else."
-            generate_and_display(instruction)
+# ==========================================
+# STEP 1: ANALYZE IMAGE & WRITE PROMPT
+# ==========================================
+st.header("1️⃣ Analyze Image & Write Prompt")
+col1, col2 = st.columns(2)
 
-# --- TAB 2: Change Camera Angle ---
-with tab2:
-    st.subheader("Change the Angle or Perspective")
-    st.write("Keep the same subject but force the AI to render it from a specific camera angle.")
-    
-    angle_subject = st.text_input("Describe the current subject/image:", placeholder="e.g., A cyberpunk character standing in an alleyway")
-    new_angle = st.selectbox("New Camera Angle:", [
-        "Bird's-eye view (Top down)", 
-        "Low angle (Looking up, heroic)", 
-        "Isometric (3D strategy game view)", 
-        "Extreme Close-up (Macro)", 
-        "Over-the-shoulder shot", 
-        "Dutch angle (Tilted camera)"
-    ])
-    
-    if st.button("Generate Prompt", key="btn_tab2", type="primary"):
-        if not angle_subject:
-            st.warning("Please describe the subject.")
-        else:
-            instruction = f"Act as an expert AI image prompt engineer. I want to render this subject: '{angle_subject}'. However, it MUST be shot from a {new_angle}. Write a highly detailed, comma-separated prompt emphasizing the camera angle, perspective, and depth of field. Only output the prompt itself, nothing else."
-            generate_and_display(instruction)
+with col1:
+    uploaded_file = st.file_uploader("Upload your Sketch or Base Image:", type=["jpg", "jpeg", "png"])
+with col2:
+    target_style = st.selectbox("Target Style:", ["Ultra Realistic Render", "3D Stylized", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk"])
+    extra_details = st.text_input("Extra Details (Optional):", placeholder="e.g., Make it raining, neon lighting...")
 
-# --- TAB 3: Advanced Studio Builder ---
-with tab3:
-    st.subheader("Advanced Prompt Builder from Scratch")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        adv_subject = st.text_area("Subject & Action:", placeholder="e.g., A glowing neon jellyfish floating through a ruined library")
-        adv_lens = st.selectbox("Camera Lens:", ["35mm (Standard Cinematic)", "14mm (Ultra Wide/Distorted)", "85mm (Portrait/Shallow Depth of Field)", "200mm (Telephoto/Compressed background)", "Macro Lens (Extreme detail)"])
-    
-    with col2:
-        adv_lighting = st.selectbox("Lighting Setup:", ["Cinematic Studio Lighting", "Golden Hour (Sunlight)", "Cyberpunk / Neon Rim Lights", "Volumetric Fog / God Rays", "Harsh Flash / Polaroid"])
-        adv_ar = st.selectbox("Aspect Ratio:", ["16:9 (Landscape/Video)", "9:16 (Vertical/Social)", "1:1 (Square)", "21:9 (Ultrawide Cinema)"])
-        
-    if st.button("Generate Prompt", key="btn_tab3", type="primary"):
-        if not adv_subject:
-            st.warning("Please describe the subject.")
-        else:
-            instruction = f"Act as an expert AI image prompt engineer. Write a highly detailed, comma-separated prompt for this subject: '{adv_subject}'. Apply these specific parameters: Lens: {adv_lens}, Lighting: {adv_lighting}, Aspect Ratio: {adv_ar}. Include technical photography terms and high-quality keywords. At the very end of the prompt, add the aspect ratio parameter as '--ar {adv_ar.split(' ')[0]}'. Only output the prompt itself, nothing else."
-            generate_and_display(instruction)
+if st.button("Analyze Image & Generate Prompt", type="primary"):
+    if not uploaded_file:
+        st.warning("Please upload an image first!")
+    else:
+        with st.spinner("Gemini is analyzing the image structure..."):
+            try:
+                # Use Gemini 2.5 Flash for its excellent vision capabilities
+                vision_model = genai.GenerativeModel('gemini-2.5-flash')
+                img = Image.open(uploaded_file)
+                
+                instruction = f"Act as an expert AI prompt engineer for Nano Banana. Look at the exact structure, composition, and layout of the attached image. {('Additional details: ' + extra_details) if extra_details else ''}. Write a highly detailed, comma-separated prompt to recreate this exact composition as a {target_style} masterpiece. Include lighting, camera angles, and high-quality textures. Only output the raw prompt text."
+                
+                response = vision_model.generate_content([instruction, img])
+                
+                # Save the prompt into session state so it is ready for Step 2
+                st.session_state.generated_prompt = response.text.strip()
+                st.success("Prompt successfully generated!")
+            except Exception as e:
+                st.error(f"Error generating prompt: {e}")
+
+st.divider()
+
+# ==========================================
+# STEP 2: EDIT PROMPT & GENERATE IMAGE
+# ==========================================
+st.header("2️⃣ Edit Prompt & Generate Image")
+
+# The text area value is tied directly to the session state we saved in Step 1
+edited_prompt = st.text_area("Review and Edit Your Prompt:", value=st.session_state.generated_prompt, height=150)
+
+# If the user types manually, update the session state with their new text
+if edited_prompt != st.session_state.generated_prompt:
+    st.session_state.generated_prompt = edited_prompt
+
+if st.button("Generate Image 🍌", type="primary"):
+    if not st.session_state.generated_prompt.strip():
+        st.warning("Please generate or write a prompt first!")
+    else:
+        with st.spinner("Nano Banana is rendering your masterpiece..."):
+            try:
+                # Note: In the Google API, Nano Banana's backend is accessed via the "imagen-3.0-generate-001" model
+                image_model = genai.ImageGenerationModel("imagen-3.0-generate-001")
+                
+                result = image_model.generate_images(
+                    prompt=st.session_state.generated_prompt,
+                    number_of_images=1,
+                    aspect_ratio="1:1" # You can change this to 16:9 or 9:16 if you prefer
+                )
+                
+                # Display the generated image
+                # (We use a try/except because different versions of the SDK format the output slightly differently)
+                try:
+                    final_image = result.generated_images[0].image
+                except AttributeError:
+                    final_image = result.images[0] 
+                
+                st.image(final_image, caption="Generated by Nano Banana Studio", use_container_width=True)
+                
+            except Exception as e:
+                st.error(f"Image generation failed. Error: {e}")
