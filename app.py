@@ -6,7 +6,7 @@ from PIL import Image
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
 st.title("🍌 Nano Banana Studio: Prompt Engineer")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Upload a base image, choose your input type, dial in your pro camera settings, and get the ultimate prompt.")
+st.write("Upload a base image, define your product category, dial in your pro camera settings, and get the ultimate prompt.")
 
 st.divider()
 
@@ -33,14 +33,38 @@ def get_closest_aspect_ratio_tag(width, height):
 col1, col2 = st.columns([1, 1.2])
 
 with col1:
+    st.markdown("### 📝 Core Settings")
+    
+    prompt_engine = st.radio(
+        "1. Select Prompt Engine:", 
+        ["🧠 Pro (Gemini Pro - Slower, but highly detailed & accurate)", "⚡ Fast (Gemini Flash - Quick, creative ideas)"]
+    )
+    
     input_type = st.radio(
-        "1. What are you uploading?", 
+        "2. What are you uploading?", 
         ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
     )
     
-    uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
-    target_style = st.selectbox("3. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
-    extra_details = st.text_input("4. Extra Details (Optional):", placeholder="e.g., Make the desk wood, add RGB lighting to the monitors...")
+    uploaded_file = st.file_uploader("3. Upload your Image:", type=["jpg", "jpeg", "png"])
+    
+    # NEW: Product Category Field
+    product_category = st.selectbox(
+        "4. Product / Subject Category:",
+        [
+            "Generic Scene / Character",
+            "Furniture / Home Office Desks",
+            "PC Gaming Hardware / Tech Accessories",
+            "Cosmetics / Beauty Products",
+            "Hard Surface Industrial / Automotive",
+            "Architecture / Interior Design"
+        ]
+    )
+    
+    target_style = st.selectbox("5. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    
+    background_details = st.text_input("6. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
+    
+    extra_details = st.text_input("7. Extra Details (Optional):", placeholder="e.g., Make the desk wood, add RGB lighting...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
@@ -76,6 +100,7 @@ with col2:
         "Lighting Setup:",
         [
             "Let the AI decide",
+            "Commercial Product Studio Lighting",
             "Cinematic Studio Lighting",
             "Volumetric Fog / God Rays",
             "Moody / Low Key Lighting",
@@ -91,48 +116,61 @@ if st.button("Generate Master Prompt ✨", type="primary"):
             try:
                 img = Image.open(uploaded_file)
                 
+                selected_model = 'gemini-2.5-pro' if "Pro" in prompt_engine else 'gemini-2.5-flash'
+                
                 if selected_ar == "Match Uploaded Image":
                     final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
                     st.info(f"Detected image proportions. Appending aspect ratio: **{final_ar_tag}**.")
                 else:
                     final_ar_tag = f"--ar {selected_ar}"
 
+                bg_instruction = f" Replace the current background/environment with this completely new background: '{background_details}'." if background_details else " Keep the background/environment consistent with the original image."
+
+                # NEW: Inject specific rendering instructions based on the product category
+                category_instruction = ""
+                if product_category != "Generic Scene / Character":
+                    category_instruction = (
+                        f" This image features a '{product_category}'. Optimize the prompt specifically for high-end commercial visualization of this category. "
+                        f"Explicitly mention appropriate physical materials (e.g., wood grain and fabrics for furniture, glossy plastics and metals for tech, subsurface scattering and caustics for beauty, brushed steel and hard reflections for industrial). "
+                        f"Ensure the staging and lighting flatter this specific type of product. "
+                    )
+
                 # --- DYNAMIC INSTRUCTIONS BASED ON INPUT TYPE ---
                 if "3D Render" in input_type:
-                    # STRICT lock for 3D blockouts
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached simple 3D render. "
+                        f"{category_instruction}"
                         f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
-                        f"CRITICAL INSTRUCTION: The generated prompt MUST explicitly command the image AI to keep the EXACT same 3D structure, geometry, shapes, and details as the reference image. Do not add, remove, or hallucinate new structural elements. "
-                        f"The prompt should focus ONLY on upgrading the existing scene to a {target_style} masterpiece by applying ultra-realistic materials, high-end texturing, and these photographic settings:\n"
+                        f"CRITICAL INSTRUCTION: The generated prompt MUST explicitly command the image AI to keep the EXACT same foreground 3D structure, geometry, shapes, and details as the reference image. Do not add or remove structural elements from the main subject. "
+                        f"{bg_instruction} "
+                        f"The prompt should focus on upgrading the scene to a {target_style} masterpiece by applying ultra-realistic materials, high-end texturing, and these photographic settings:\n"
                         f"- Lens: {selected_lens}\n"
                         f"- Depth of Field: {selected_dof}\n"
                         f"- Lighting: {selected_lighting}\n"
-                        f"Write a highly detailed, comma-separated prompt prioritizing keywords like 'exact geometry match', 'material upgrade', and 'hyper-realistic textures'. "
-                        f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
+                        f"Write a highly detailed, comma-separated prompt. DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                     )
                 else:
-                    # CREATIVE interpretation for sketches
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached sketch. "
+                        f"{category_instruction}"
                         f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
+                        f"{bg_instruction} "
                         f"Use the sketch as a compositional guide, but creatively flesh out the details to turn it into a {target_style} masterpiece. "
                         f"Apply these photographic settings:\n"
                         f"- Lens: {selected_lens}\n"
                         f"- Depth of Field: {selected_dof}\n"
                         f"- Lighting: {selected_lighting}\n"
-                        f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. "
-                        f"DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
+                        f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                     )
                 
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model=selected_model,
                     contents=[instruction, img]
                 )
                 
                 final_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
-                st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
+                st.success(f"Prompt successfully generated using {prompt_engine.split(' ')[1]}! Hover over the top right corner of the box below to copy it.")
                 st.code(final_prompt, language="text")
                 
             except Exception as e:
