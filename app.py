@@ -35,24 +35,15 @@ col1, col2 = st.columns([1, 1.2])
 with col1:
     st.markdown("### 📝 Core Settings")
     
-    # Brought the toggle back to prevent 429 Quota Errors
-    prompt_engine = st.radio(
-        "1. Select Prompt Engine:", 
-        [
-            "🧠 Pro (Highest Quality - Strict Free Quota)", 
-            "⚡ Flash (Faster - High Free Quota Fallback)"
-        ]
-    )
-    
     input_type = st.radio(
-        "2. What are you uploading?", 
+        "1. What are you uploading?", 
         ["🧊 Simple 3D Render / Blockout (Strict Geometry)", "🖌️ Hand-Drawn Sketch (Creative Interpretation)"]
     )
     
-    uploaded_file = st.file_uploader("3. Upload your Image:", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
     
     product_category = st.selectbox(
-        "4. Product / Subject Category:",
+        "3. Product / Subject Category:",
         [
             "Workspace & PC Setups (Desks, Chairs, Tech)",
             "Generic Scene / Character",
@@ -62,11 +53,11 @@ with col1:
         ]
     )
     
-    target_style = st.selectbox("5. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    target_style = st.selectbox("4. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
     
-    background_details = st.text_input("6. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
+    background_details = st.text_input("5. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
     
-    extra_details = st.text_input("7. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood, add RGB lighting behind the monitors...")
+    extra_details = st.text_input("6. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood, add RGB lighting behind the monitors...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
@@ -118,9 +109,6 @@ if st.button("Generate Master Prompt ✨", type="primary"):
             try:
                 img = Image.open(uploaded_file)
                 
-                # Logic to switch models based on user selection
-                selected_model = 'gemini-2.5-pro' if "Pro" in prompt_engine else 'gemini-2.5-flash'
-                
                 if selected_ar == "Match Uploaded Image":
                     final_ar_tag = get_closest_aspect_ratio_tag(img.width, img.height)
                     st.info(f"Detected image proportions. Appending aspect ratio: **{final_ar_tag}**.")
@@ -169,14 +157,15 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                         f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. DO NOT include the aspect ratio in your text output. Only output the raw prompt text."
                     )
                 
+                # Locked safely to the fast model to avoid quota crashes
                 response = client.models.generate_content(
-                    model=selected_model,
+                    model='gemini-2.5-flash',
                     contents=[instruction, img]
                 )
                 
                 final_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
-                st.success(f"Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
+                st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
                 st.code(final_prompt, language="text")
                 
             except Exception as e:
