@@ -6,7 +6,7 @@ from PIL import Image
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
 st.title("🍌 Nano Banana Studio: Prompt Engineer")
 st.markdown("**Created by Sajjad SABOUR**")
-st.write("Upload a base image, define your style, dial in your pro camera settings, and get the ultimate prompt.")
+st.write("Upload a base image, dial in your pro camera settings, and get the ultimate prompt.")
 
 st.divider()
 
@@ -41,25 +41,11 @@ with col1:
     
     uploaded_file = st.file_uploader("2. Upload your Image:", type=["jpg", "jpeg", "png"])
     
-    product_category = st.selectbox(
-        "3. Atmosphere & Material Style:",
-        [
-            "Workspace & PC Setups (Wood grains, matte plastics, glowing screens)",
-            "Generic Scene / Character",
-            "Cosmetics / Beauty (Soft lighting, caustics, subsurface scattering)",
-            "Hard Surface Industrial (Brushed metals, hard reflections)",
-            "Architecture / Interior (Global illumination, realistic fabrics)"
-        ]
-    )
+    target_style = st.selectbox("3. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
     
-    target_style = st.selectbox("4. Target Style:", ["Ultra Realistic Render", "Octane Render / Cinema 4D", "Anime / Cel Shaded", "Cinematic Photography", "Cyberpunk / Neon"])
+    background_details = st.text_input("4. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
     
-    background_details = st.text_input("5. Change Background (Optional):", placeholder="e.g., A neon-lit gaming room, a modern home office...")
-    
-    extra_details = st.text_input("6. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood...")
-    
-    # NEW: Negative Prompt Field
-    negative_prompt = st.text_input("7. Negative Prompt (What to AVOID):", placeholder="e.g., messy cables, people, plants, text, watermarks...")
+    extra_details = st.text_input("5. Extra Details (Optional):", placeholder="e.g., Make the desk walnut wood...")
 
 with col2:
     st.markdown("### ⚙️ Pro Camera Controls")
@@ -118,44 +104,30 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                     final_ar_tag = f"--ar {selected_ar}"
 
                 bg_instruction = f" Replace the current background/environment with this completely new background: '{background_details}'." if background_details else " Keep the background/environment consistent with the original image."
-                
-                neg_instruction = f" --no {negative_prompt}" if negative_prompt else ""
-
-                # Fixed Category Logic: Force it to apply to MATERIALS only, not objects.
-                category_instruction = ""
-                if "Workspace" in product_category:
-                    category_instruction = (
-                        f" Apply a high-end commercial workspace aesthetic to the existing objects. Focus ONLY on upgrading the materials (rich wood grains, premium fabrics, matte plastics, glowing screens). DO NOT add new physical objects to the scene."
-                    )
-                elif "Generic" not in product_category:
-                    category_instruction = (
-                        f" Apply a {product_category.split('(')[0].strip()} aesthetic to the existing objects. Focus ONLY on upgrading the physical materials and lighting appropriate for this style. DO NOT add new physical objects to the scene."
-                    )
 
                 if "3D Render" in input_type:
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached simple 3D render. "
-                        f"CRITICAL RULE: Identify ONLY the exact physical objects present in this image. You MUST command the image AI to keep this exact 3D geometry. Do not add, hallucinate, or suggest any new structural elements, furniture, or props that are not in the reference image. "
-                        f"{category_instruction} "
+                        f"CRITICAL RULE: You must act as a literal texture and lighting engine. Describe ONLY the exact geometry and objects visible in this reference image. Absolutely DO NOT add, suggest, or hallucinate any new objects, furniture, or props. "
                         f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
                         f"{bg_instruction} "
-                        f"Upgrade the scene to a {target_style} masterpiece with these photographic settings:\n"
+                        f"Upgrade the existing geometry to a {target_style} masterpiece focusing purely on ultra-realistic materials, high-resolution textures, and these photographic settings:\n"
                         f"- Lens: {selected_lens}\n"
                         f"- Depth of Field: {selected_dof}\n"
                         f"- Lighting: {selected_lighting}\n"
-                        f"Write a highly detailed, comma-separated prompt. DO NOT output conversational text, just the raw prompt."
+                        f"Write a highly detailed, comma-separated prompt describing the scene. DO NOT output conversational text, just the raw prompt."
                     )
                 else:
                     instruction = (
                         f"Act as an expert AI prompt engineer for Nano Banana. Look at the attached sketch. "
-                        f"Use the sketch as a compositional guide. {category_instruction} "
+                        f"Use the sketch as a compositional guide. "
                         f"{('Additional details from user: ' + extra_details) if extra_details else ''}. "
                         f"{bg_instruction} "
                         f"Creatively turn this into a {target_style} masterpiece with these photographic settings:\n"
                         f"- Lens: {selected_lens}\n"
                         f"- Depth of Field: {selected_dof}\n"
                         f"- Lighting: {selected_lighting}\n"
-                        f"Write a highly detailed, comma-separated prompt. DO NOT output conversational text, just the raw prompt."
+                        f"Write a highly detailed, comma-separated prompt describing the scene, textures, and lighting. DO NOT output conversational text, just the raw prompt."
                     )
                 
                 response = client.models.generate_content(
@@ -163,7 +135,7 @@ if st.button("Generate Master Prompt ✨", type="primary"):
                     contents=[instruction, img]
                 )
                 
-                final_prompt = f"{response.text.strip()} {final_ar_tag}{neg_instruction}"
+                final_prompt = f"{response.text.strip()} {final_ar_tag}"
                 
                 st.success("Prompt successfully generated! Hover over the top right corner of the box below to copy it.")
                 st.code(final_prompt, language="text")
