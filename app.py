@@ -1,6 +1,7 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 from PIL import Image
+import io
 
 # --- Web App UI Setup ---
 st.set_page_config(page_title="Nano Banana Studio", page_icon="🍌", layout="wide")
@@ -11,14 +12,14 @@ st.write("Step 1: Upload a sketch to generate an optimized prompt. Step 2: Edit 
 st.divider()
 
 # --- Initialize Session State ---
-# This keeps the prompt in memory so it doesn't disappear when you click buttons
 if "generated_prompt" not in st.session_state:
     st.session_state.generated_prompt = ""
 
-# --- Setup API Key ---
+# --- Setup the NEW API Client ---
 try:
     api_key = st.secrets["API_KEY"]
-    genai.configure(api_key=api_key)
+    # This uses the brand new unified Google GenAI library
+    client = genai.Client(api_key=api_key)
 except Exception:
     st.error("API Key not found! Please add it to your Streamlit Settings > Secrets.")
     st.stop()
@@ -41,15 +42,17 @@ if st.button("Analyze Image & Generate Prompt", type="primary"):
     else:
         with st.spinner("Gemini is analyzing the image structure..."):
             try:
-                # Use Gemini 2.5 Flash for its excellent vision capabilities
-                vision_model = genai.GenerativeModel('gemini-2.5-flash')
                 img = Image.open(uploaded_file)
                 
-                instruction = f"Act as an expert AI prompt engineer for Nano Banana. Look at the exact structure, composition, and layout of the attached image. {('Additional details: ' + extra_details) if extra_details else ''}. Write a highly detailed, comma-separated prompt to recreate this exact composition as a {target_style} masterpiece. Include lighting, camera angles, and high-quality textures. Only output the raw prompt text."
+                # Highly strict instructions to prevent camera angle changes
+                instruction = f"Act as an expert AI prompt engineer for Nano Banana. Look at the exact structure, composition, and layout of the attached image. {('Additional details: ' + extra_details) if extra_details else ''}. IMPORTANT: The generated prompt MUST strictly enforce keeping the exact same structure, composition, perspective, and camera angle as the uploaded image. Do not change the angle at all. Write a highly detailed, comma-separated prompt to recreate this exact layout as a {target_style} masterpiece. Include lighting and high-quality textures. Only output the raw prompt text."
                 
-                response = vision_model.generate_content([instruction, img])
+                # New syntax for text generation
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=[instruction, img]
+                )
                 
-                # Save the prompt into session state so it is ready for Step 2
                 st.session_state.generated_prompt = response.text.strip()
                 st.success("Prompt successfully generated!")
             except Exception as e:
@@ -62,10 +65,8 @@ st.divider()
 # ==========================================
 st.header("2️⃣ Edit Prompt & Generate Image")
 
-# The text area value is tied directly to the session state we saved in Step 1
 edited_prompt = st.text_area("Review and Edit Your Prompt:", value=st.session_state.generated_prompt, height=150)
 
-# If the user types manually, update the session state with their new text
 if edited_prompt != st.session_state.generated_prompt:
     st.session_state.generated_prompt = edited_prompt
 
@@ -75,23 +76,33 @@ if st.button("Generate Image 🍌", type="primary"):
     else:
         with st.spinner("Nano Banana is rendering your masterpiece..."):
             try:
-                # Note: In the Google API, Nano Banana's backend is accessed via the "imagen-3.0-generate-001" model
-                image_model = genai.ImageGenerationModel("imagen-3.0-generate-001")
-                
-                result = image_model.generate_images(
+                # New syntax for image generation using Nano Banana's backend (imagen-3.0)
+                result = client.models.generate_images(
+                    model='imagen-3.0-generate-002',
                     prompt=st.session_state.generated_prompt,
-                    number_of_images=1,
-                    aspect_ratio="1:1" # You can change this to 16:9 or 9:16 if you prefer
+                    config=dict(
+                        number_of_images=1,
+                        aspect_ratio="1:1"
+                    )
                 )
                 
-                # Display the generated image
-                # (We use a try/except because different versions of the SDK format the output slightly differently)
-                try:
-                    final_image = result.generated_images[0].image
-                except AttributeError:
-                    final_image = result.images[0] 
+                # The new SDK automatically gives us a clean image object
+                final_image = result.generated_images[0].image
                 
                 st.image(final_image, caption="Generated by Nano Banana Studio", use_container_width=True)
+                
+                # Convert the image to bytes so the user can download it
+                buf = io.BytesIO()
+                final_image.save(buf, format="PNG")
+                byte_im = buf.getvalue()
+                
+                st.download_button(
+                    label="Download Full Resolution Image 📥",
+                    data=byte_im,
+                    file_name="nano_banana_render.png",
+                    mime="image/png",
+                    type="primary"
+                )
                 
             except Exception as e:
                 st.error(f"Image generation failed. Error: {e}")
